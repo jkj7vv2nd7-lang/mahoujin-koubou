@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>魔方陣工房 ― たてよこななめ、みんな同じ数</title>
+<meta name="description" content="1から9をならべて、たてもよこもななめも15にする魔方陣パズル。テラス式（バシェーの方法）とシャム法の作り方アニメーション、練習シート印刷つき。数学の絵本 第35話と連動。">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:title" content="魔方陣工房">
+<meta property="og:description" content="たてよこななめ、みんな同じ数になる不思議な四角。パズルと作り方で遊ぶ魔方陣アプリ。">
+<meta property="og:image" content="og-image.png">
+<meta property="og:type" content="website">
+<style>
+:root{--ink:#20302a;--paper:#f7f3e8;--teal:#14655a;--teal2:#0e4a41;--gold:#c9a227;--gold2:#e8cf7a;--red:#b3402e;--card:#fffdf6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--paper);color:var(--ink);padding-bottom:40px}
+header{background:linear-gradient(160deg,#123f37,#14655a 60%,#1a7a68);color:#fff;padding:20px 16px 16px;text-align:center;border-bottom:4px solid var(--gold);position:relative;overflow:hidden}
+header h1{margin:0;font-size:30px;letter-spacing:.14em;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+header p{margin:6px 0 0;font-size:13px;opacity:.92}
+header .turtle{font-size:30px;display:inline-block;animation:bob 3s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(3deg)}}
+@media (prefers-reduced-motion:reduce){header .turtle{animation:none}}
+.wrap{max-width:560px;margin:0 auto;padding:12px}
+.tabs{display:flex;gap:8px;margin:4px 0 12px}
+.tabs button{flex:1;padding:11px 4px;font-size:15px;font-weight:700;border:2px solid var(--teal);background:#fff;color:var(--teal);border-radius:12px;cursor:pointer}
+.tabs button.on{background:var(--teal);color:#fff}
+.card{background:var(--card);border:1px solid #e3dcc4;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(60,50,20,.08)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1}
+button.act{padding:10px 8px;font-size:14px;font-weight:700;border-radius:10px;border:2px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer}
+button.sub{padding:10px 8px;font-size:14px;font-weight:700;border-radius:10px;border:2px solid var(--teal);background:#fff;color:var(--teal);cursor:pointer}
+select{width:100%;padding:10px;font-size:15px;border:2px solid #cfc7a8;border-radius:10px;background:#fff}
+label{font-size:13px;font-weight:700;color:var(--teal2);display:block;margin-bottom:4px}
+.msg{font-size:15px;min-height:24px;margin:10px 0 4px;font-weight:700;color:var(--teal2)}
+.msg.win{color:var(--red)}
+/* 盤面 */
+.boardwrap{display:flex;justify-content:center;margin:8px 0}
+.board{display:grid;gap:5px}
+.cell{position:relative;border:2.5px solid #8a7f5c;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer;user-select:none;transition:background .15s,transform .1s}
+.cell.given{background:#efe8cf;border-color:var(--gold);cursor:default}
+.cell.sel{outline:3.5px solid var(--gold);outline-offset:1px}
+.cell.winflash{animation:fl .7s ease 2}
+@keyframes fl{50%{background:#ffe9a8;transform:scale(1.07)}}
+.sum{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#7a715a;background:#efe9d6;border-radius:8px;min-width:34px}
+.sum.ok{background:#bfe3c0;color:#14532d;box-shadow:0 0 0 2px #57a773 inset}
+.sum.over{background:#f6cfc4;color:#8c2f1d}
+.sum.diag{font-size:11.5px;line-height:1.35;text-align:center;padding:2px}
+.tray{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:10px}
+.tile{width:46px;height:46px;border-radius:10px;border:2.5px solid var(--teal);background:#fff;color:var(--teal2);font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.tile.sel{background:var(--gold2);border-color:var(--gold);transform:scale(1.1)}
+.tile.used{opacity:.18;pointer-events:none}
+/* 作り方 */
+.field{position:relative;margin:10px auto;background:#fbf7ea;border:1.5px dashed #cfc7a8;border-radius:10px}
+.fcell{position:absolute;border:1px solid #d8d0b0;border-radius:5px}
+.fcell.square{background:#fff;border:1.8px solid #8a7f5c}
+.fcell.terrace{background:#f1ecd8;border-style:dashed}
+.fnum{position:absolute;display:flex;align-items:center;justify-content:center;font-weight:800;background:#14655a;color:#fff;border-radius:6px;transition:left .8s ease,top .8s ease;z-index:2;font-size:15px}
+.fnum.out{background:#b3822e}
+.note{font-size:14.5px;line-height:1.6;min-height:46px;background:#f4efdd;border-radius:10px;padding:9px 11px}
+details.card summary{font-weight:800;font-size:16px;color:var(--teal2);cursor:pointer}
+details.card p,details.card li{font-size:14.5px;line-height:1.75}
+.grid2{display:grid;grid-template-columns:repeat(3,34px);gap:3px;margin:8px 0}
+.grid2 div{border:1.5px solid #8a7f5c;border-radius:4px;text-align:center;font-weight:800;padding:5px 0;background:#fff}
+a{color:var(--teal);font-weight:700}
+.small{font-size:12.5px;color:#6d6650;line-height:1.6}
+#sheetOverlay{position:fixed;inset:0;background:rgba(20,30,25,.85);display:none;z-index:50;padding:16px;overflow:auto}
+#sheetOverlay .box{max-width:520px;margin:0 auto;background:#fff;border-radius:14px;padding:14px}
+#sheetOverlay img{width:100%;border:1px solid #ccc}
+.topbar{display:flex;justify-content:flex-end;max-width:560px;margin:0 auto;padding:8px 12px 0}
+.topbar button{border:2px solid var(--teal);background:#fff;color:var(--teal);border-radius:999px;padding:5px 12px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+<div class="turtle">🐢</div>
+<h1>魔方陣工房</h1>
+<p>たて・よこ・ななめ、みんな同じ数になる不思議な四角</p>
+</header>
+<div class="topbar"><button id="soundBtn">🔊 音あり</button></div>
+<div class="wrap">
+<div class="tabs">
+<button id="tabP" class="on">🧩 パズル</button>
+<button id="tabM">🔨 作り方</button>
+<button id="tabC">📖 コラム</button>
+</div>
+
+<!-- パズル -->
+<section id="secP">
+<div class="card">
+<div class="row">
+<div><label>大きさ</label><select id="pzSize"><option value="3">3×3（合計15）</option><option value="5">5×5（合計65）</option></select></div>
+<div><label>あそび方</label><select id="pzMode"><option value="free">空っぽから作る</option><option value="challenge">お題（途中から）</option></select></div>
+</div>
+<div class="msg" id="pzMsg"></div>
+<div class="boardwrap"><div class="board" id="pzBoard"></div></div>
+<div class="tray" id="pzTray"></div>
+<div class="row" style="margin-top:12px">
+<button class="sub" id="pzHint">💡 ヒント</button>
+<button class="sub" id="pzReset">↩ リセット</button>
+<button class="act" id="pzNew">🎲 新しいお題</button>
+</div>
+<p class="small" style="margin-top:10px">数字タイルをタップしてから、マスをタップすると置けます。置いた数字をタップすると戻せます。各列の合計が目標にそろうと、緑色に光ります。<span id="pzStat"></span></p>
+</div>
+<div class="card">
+<b>🖨 練習シート</b>
+<p class="small">空の魔方陣の練習シート（A4）を画像で作ります。保存・共有して印刷すれば、教室や家庭で紙の上でも遊べます。</p>
+<button class="act" id="sheetBtn" style="width:100%">練習シートを作る</button>
+</div>
+</section>
+
+<!-- 作り方 -->
+<section id="secM" style="display:none">
+<div class="card">
+<div class="row">
+<div><label>作り方</label><select id="mkMethod"><option value="terrace">テラス式（バシェーの方法）</option><option value="siamese">シャム法（ド・ラ・ルベール）</option></select></div>
+<div><label>大きさ</label><select id="mkSize"><option value="3">3×3</option><option value="5">5×5</option></select></div>
+</div>
+<div class="field" id="mkField"></div>
+<div class="note" id="mkNote"></div>
+<div class="row" style="margin-top:10px">
+<button class="sub" id="mkStep">▶ 1つ進む</button>
+<button class="act" id="mkAuto">⏩ 自動で見る</button>
+<button class="sub" id="mkReset">↩ 最初から</button>
+</div>
+<p class="small" id="mkDesc" style="margin-top:10px"></p>
+</div>
+</section>
+
+<!-- コラム -->
+<section id="secC" style="display:none">
+<div class="card">
+<details open>
+<summary>なぜ真ん中は必ず5なの？</summary>
+<p>1から9までを全部足すと45。3つの列に分けるので、1列の合計は45÷3＝15になります。</p>
+<p>真ん中を通る列は、たて・よこ・ななめ2本の全部で4本。その合計は15×4＝60です。この4本には9つの数が全部出てきますが、真ん中の数だけが4回数えられます。つまり60＝45＋（真ん中の数×3）。だから真ん中の数は（60−45）÷3＝5と、置く前から決まっているのです。</p>
+<p>角のマスには偶数（2・4・6・8）、辺の真ん中には奇数（1・3・7・9）が入ります。3×3の魔方陣の並び方は、回したり裏返したりしたものを除くと、たった1通りだけです。</p>
+<div class="grid2"><div>4</div><div>9</div><div>2</div><div>3</div><div>5</div><div>7</div><div>8</div><div>1</div><div>6</div></div>
+<p class="small">これが洛書（らくしょ）として伝わる並びです。</p>
+</details>
+</div>
+<div class="card">
+<details>
+<summary>魔方陣の歴史 ― 亀の甲らから関孝和まで</summary>
+<p>中国には「洛書」という言い伝えがあります。洛水という川から現れた亀の甲らに点の模様があったという伝説で、それを数に直したものが最古の魔方陣だと言われています。</p>
+<p>「作り方」タブのテラス式は、日本では「バシェーの方法」という名前で伝えられることが多い作り方です。フランスの数学者クロード・バシェー（1581〜1638年）が、娯楽数学の本の1624年の版で紹介した方法として知られています。ただしバシェーの発明というわけではなく、イタリアのカルダーノが1539年の本ですでに同じ作り方を説明していたとも言われます。</p>
+<p>世界でいちばん有名になったのは「シャム法」です。フランスの外交官ド・ラ・ルベールが、シャム（今のタイ）への旅（1687年）で学び、1691年の本『シャム王国記』で紹介しました。もとはインドで考えられた方法だと言われています。中国では13世紀に楊輝（ようき）が、3×3から10×10までの作り方を本にまとめました。</p>
+<p>そして日本では、江戸時代の和算家・関孝和が1683年に『方陣之法・円攅之法』を著し、魔方陣の作り方を理論的にまとめています。ルベールがシャムへ渡る少し前のことです。</p>
+<p>数年前には、新潟県の公立高校の入試問題で3×3の魔方陣が出題されました。作り方を知っている人にとっては、あっという間に解ける問題だったはずです。</p>
+</details>
+</div>
+<div class="card">
+<p style="font-size:14.5px;line-height:1.75">このアプリは、Web版「数学の絵本」第35話「たてよこななめ、みんな15 ― 洛書と魔方陣のおはなし」と連動しています。物語で読みたい方はこちらへ。</p>
+<p><a href="https://jkj7vv2nd7-lang.github.io/math-picture-books/" target="_blank" rel="noopener">📚 Web版「数学の絵本」（本棚）</a></p>
+<p class="small">不具合が出るかもしれません。実際にご使用の際に不具合がありましたら、紹介記事のコメント欄からお知らせください。</p>
+</div>
+</section>
+</div>
+
+<div id="sheetOverlay">
+<div class="box">
+<b>練習シート（A4）</b>
+<p class="small">画像を長押し（または「共有する」）で保存して、印刷してください。</p>
+<img id="sheetImg" alt="魔方陣の練習シート">
+<div class="row" style="margin-top:10px">
+<button class="act" id="sheetShare">📤 共有する</button>
+<button class="sub" id="sheetClose">閉じる</button>
+</div>
+</div>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const TGT=n=>n*(n*n+1)/2;
+/* ---------- 音 ---------- */
+let AC=null,SOUND=true;
+function beep(f,t0,d,type,g){if(!SOUND)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),v=AC.createGain();o.type=type||"sine";o.frequency.value=f;const s=AC.currentTime+(t0||0);v.gain.setValueAtTime(g||.12,s);v.gain.exponentialRampToValueAtTime(.001,s+(d||.12));o.connect(v);v.connect(AC.destination);o.start(s);o.stop(s+(d||.12)+.02)}catch(e){}}
+$("soundBtn").onclick=()=>{SOUND=!SOUND;$("soundBtn").textContent=SOUND?"🔊 音あり":"🔇 音なし";if(SOUND)beep(660,0,.1)};
+/* ---------- タブ ---------- */
+function tab(t){["P","M","C"].forEach(x=>{$("sec"+x).style.display=x===t?"":"none";$("tab"+x).classList.toggle("on",x===t)})}
+$("tabP").onclick=()=>tab("P");$("tabM").onclick=()=>{tab("M");mkInit()};$("tabC").onclick=()=>tab("C");
+/* ---------- 解のバリエーション ---------- */
+const BASE3=[[4,9,2],[3,5,7],[8,1,6]],TER3=[[2,7,6],[9,5,1],[4,3,8]];
+const TER5=[[3,16,9,22,15],[20,8,21,14,2],[7,25,13,1,19],[24,12,5,18,6],[11,4,17,10,23]];
+const SIA5=[[17,24,1,8,15],[23,5,7,14,16],[4,6,13,20,22],[10,12,19,21,3],[11,18,25,2,9]];
+function variants(base){const out=[];const rot=g=>g[0].map((_,i)=>g.map(r=>r[i]).reverse());const mir=g=>g.map(r=>[...r].reverse());let g=base;for(let k=0;k<4;k++){out.push(g);out.push(mir(g));g=rot(g)}const seen=new Set(),u=[];out.forEach(v=>{const k=JSON.stringify(v);if(!seen.has(k)){seen.add(k);u.push(v)}});return u}
+const VAR={3:variants(BASE3).concat(variants(TER3)),5:variants(TER5).concat(variants(SIA5))};
+const flat=g=>g.flat();
+/* ---------- パズル ---------- */
+let PZ={n:3,board:[],given:[],sel:null,moves:0,t0:null,timer:null,sec:0,won:false};
+function pzTarget(){return TGT(PZ.n)}
+function pzLines(){const n=PZ.n,b=PZ.board,L=[];
+for(let r=0;r<n;r++)L.push([...Array(n)].map((_,c)=>b[r*n+c]));
+for(let c=0;c<n;c++)L.push([...Array(n)].map((_,r)=>b[r*n+c]));
+L.push([...Array(n)].map((_,i)=>b[i*n+i]));L.push([...Array(n)].map((_,i)=>b[i*n+(n-1-i)]));return L}
+function pzNew(){const n=+$("pzSize").value;PZ={n,board:Array(n*n).fill(0),given:Array(n*n).fill(false),sel:null,moves:0,t0:null,timer:null,sec:0,won:false};
+if($("pzMode").value==="challenge"){const v=flat(VAR[n][Math.floor(Math.random()*VAR[n].length)]);const cells=[...Array(n*n).keys()];for(let i=cells.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]]}
+const k=n===3?4:9;cells.slice(0,k).forEach(ci=>{PZ.board[ci]=v[ci];PZ.given[ci]=true})}
+pzDraw();pzMsg(n===3?"たて・よこ・ななめ、全部15にしよう。":"たて・よこ・ななめ、全部65にしよう。")}
+function pzMsg(t,win){$("pzMsg").textContent=t;$("pzMsg").classList.toggle("win",!!win)}
+function pzUsed(){return new Set(PZ.board.filter(v=>v))}
+function pzDraw(){const n=PZ.n,bd=$("pzBoard");const cs=n===3?64:52;bd.style.gridTemplateColumns=`repeat(${n},${cs}px) 40px`;bd.innerHTML="";
+const lines=pzLines(),T=pzTarget();
+const sumState=vals=>{const s=vals.reduce((a,x)=>a+x,0),full=vals.every(v=>v);return{s,cls:full&&s===T?"ok":s>T?"over":""}};
+for(let r=0;r<n;r++){for(let c=0;c<n;c++){const i=r*n+c,d=document.createElement("div");d.className="cell"+(PZ.given[i]?" given":"");d.style.width=d.style.height=cs+"px";d.style.fontSize=(n===3?26:21)+"px";d.textContent=PZ.board[i]||"";d.onclick=()=>pzCell(i);bd.appendChild(d)}
+const st=sumState(lines[r]);const sd=document.createElement("div");sd.className="sum "+st.cls;sd.textContent=st.s||"";bd.appendChild(sd)}
+for(let c=0;c<n;c++){const st=sumState(lines[n+c]);const sd=document.createElement("div");sd.className="sum "+st.cls;sd.textContent=st.s||"";bd.appendChild(sd)}
+const d1=sumState(lines[2*n]),d2=sumState(lines[2*n+1]);const dd=document.createElement("div");dd.className="sum diag "+(d1.cls==="ok"&&d2.cls==="ok"?"ok":"");dd.innerHTML=`＼${d1.s||0}<br>／${d2.s||0}`;bd.appendChild(dd);
+const tray=$("pzTray");tray.innerHTML="";const used=pzUsed();
+for(let v=1;v<=n*n;v++){const t=document.createElement("div");t.className="tile"+(used.has(v)?" used":"")+(PZ.sel===v?" sel":"");t.textContent=v;t.onclick=()=>{if(PZ.won)return;PZ.sel=PZ.sel===v?null:v;beep(520,0,.06);pzDraw()};tray.appendChild(t)}
+$("pzStat").textContent=PZ.moves?`（${PZ.moves}手・${PZ.sec}秒）`:""}
+function pzStartTimer(){if(PZ.timer)return;PZ.t0=Date.now();PZ.timer=setInterval(()=>{PZ.sec=Math.floor((Date.now()-PZ.t0)/1000);$("pzStat").textContent=`（${PZ.moves}手・${PZ.sec}秒）`},500)}
+function pzCell(i){if(PZ.won||PZ.given[i])return;
+if(PZ.board[i]){PZ.board[i]=0;PZ.sel=null;beep(330,0,.08);pzDraw();return}
+if(PZ.sel==null){pzMsg("まず下の数字タイルを選んでね。");return}
+PZ.board[i]=PZ.sel;PZ.sel=null;PZ.moves++;pzStartTimer();beep(740,0,.09);
+const T=pzTarget(),done=pzLines().every(L=>L.reduce((a,x)=>a+x,0)===T&&L.every(v=>v));
+pzDraw();
+if(done){PZ.won=true;clearInterval(PZ.timer);pzMsg(`🎉 完成！ ${PZ.moves}手・${PZ.sec}秒で魔方陣ができた！`,true);[523,659,784,1046].forEach((f,k)=>beep(f,k*.13,.22,"triangle",.14));
+[...$("pzBoard").querySelectorAll(".cell")].forEach(c=>c.classList.add("winflash"))}
+else pzMsg("いい調子。そのまま続けよう。")}
+function pzSolve(board){const n=PZ.n,T=pzTarget();
+const vs=VAR[n].map(flat).filter(v=>board.every((x,i)=>!x||v[i]===x));if(vs.length)return vs[0];
+const b=[...board],cells=[];for(let i=0;i<n*n;i++)if(!b[i])cells.push(i);
+const used=new Set(b.filter(v=>v));let nodes=0;
+const linesOf=i=>{const r=Math.floor(i/n),c=i%n,L=[[]];for(let k=0;k<n;k++)L[0].push(r*n+k);const C=[];for(let k=0;k<n;k++)C.push(k*n+c);L.push(C);if(r===c)L.push([...Array(n)].map((_,k)=>k*n+k));if(r+c===n-1)L.push([...Array(n)].map((_,k)=>k*n+(n-1-k)));return L};
+const ok=i=>linesOf(i).every(L=>{const s=L.reduce((a,j)=>a+(b[j]||0),0),e=L.filter(j=>!b[j]).length;return s<=T&&(e>0||s===T)&&(e!==1||s<T)});
+function bt(k){if(k===cells.length)return true;if(++nodes>300000)return false;const i=cells[k];
+for(let v=1;v<=n*n;v++){if(used.has(v))continue;b[i]=v;used.add(v);if(ok(i)&&bt(k+1))return true;b[i]=0;used.delete(v)}return false}
+return bt(0)?b:null}
+$("pzHint").onclick=()=>{if(PZ.won)return;const sol=pzSolve(PZ.board);
+if(!sol){pzMsg("この置き方だと完成できないみたい。どれか戻して考え直してみよう。");beep(220,0,.15);return}
+const i=PZ.board.findIndex((v,k)=>!v&&sol[k]);if(i<0)return;
+PZ.board[i]=sol[i];PZ.moves++;pzStartTimer();beep(880,0,.1);pzDraw();
+const T=pzTarget();if(pzLines().every(L=>L.reduce((a,x)=>a+x,0)===T&&L.every(v=>v))){PZ.won=true;clearInterval(PZ.timer);pzMsg(`🎉 完成！ 魔方陣ができた！`,true);[523,659,784,1046].forEach((f,k)=>beep(f,k*.13,.22,"triangle",.14))}
+else pzMsg("ヒント：1つ置いたよ。")};
+$("pzReset").onclick=()=>{const mode=$("pzMode").value;if(mode==="challenge"){pzNew()}else{PZ.board=PZ.board.map((v,i)=>PZ.given[i]?v:0);PZ.sel=null;PZ.won=false;pzDraw();pzMsg("リセットしたよ。")}};
+$("pzNew").onclick=pzNew;$("pzSize").onchange=pzNew;$("pzMode").onchange=pzNew;
+/* ---------- 作り方 ---------- */
+let MK={steps:[],idx:0,timer:null};
+function terraceSteps(n){const S=2*n-1,o=(n-1)/2,field={};
+for(let k=0;k<n*n;k++){const a=Math.floor(k/n),b=k%n;field[(a-b+(n-1))+","+ (a+b)]=k+1}
+const place=Object.entries(field).map(([k,v])=>{const[r,c]=k.split(",").map(Number);return{v,r,c}});
+const fin={};place.forEach(p=>{let r=p.r,c=p.c;while(r<o)r+=n;while(r>=o+n)r-=n;while(c<o)c+=n;while(c>=o+n)c-=n;fin[p.v]=[r-o,c-o]});
+return{place,fin,S,o}}
+function siameseSteps(n){const g=Array.from({length:n},()=>Array(n).fill(0));let r=0,c=Math.floor(n/2);const place=[];
+for(let v=1;v<=n*n;v++){place.push({v,r,c,note:v===1?"1は上段の真ん中に置く":place._n});g[r][c]=v;
+let nr=(r-1+n)%n,nc=(c+1)%n,note="右上へ進む";
+if(g[nr][nc]){nr=(r+1)%n;nc=c;note="行き先が埋まっていたので、真下へ"}
+else if(nr!==r-1&&nc!==c+1)note="端からはみ出したので、反対側から出てくる";
+place[place.length-1]._n=note;r=nr;c=nc}
+return place}
+const MKDESC={terrace:"四辺の外側に階段（テラス）のようなマスを書き足し、1からななめの列に沿って数を置いていきます。外側に出た数は、同じ行・同じ列の反対側にある空きマスへ、そのまままっすぐ移します。日本では「バシェーの方法」という名前で伝えられることが多い作り方です。",
+siamese:"1を上段の真ん中に置き、次からは右上へ進みます。はみ出したら反対側から出てきて、行き先が埋まっていたら真下へ下がります。ド・ラ・ルベールがシャム（今のタイ）からヨーロッパへ伝えた「シャム法」です。"};
+function mkInit(){clearInterval(MK.timer);const n=+$("mkSize").value,m=$("mkMethod").value;MK={steps:[],idx:0,timer:null,n,m};
+$("mkDesc").textContent=MKDESC[m];
+if(m==="terrace"){const{place,fin,S,o}=terraceSteps(n);MK.field={S,o};MK.place=place;MK.fin=fin;MK.total=place.length+1}
+else{MK.place=siameseSteps(n);MK.total=MK.place.length}
+mkDraw()}
+function mkDraw(){const f=$("mkField"),n=MK.n,m=MK.m;f.innerHTML="";
+if(m==="terrace"){const{S,o}=MK.field,cs=n===3?44:30;f.style.width=f.style.height=(S*cs)+"px";
+for(let r=0;r<S;r++)for(let c=0;c<S;c++){const inSq=r>=o&&r<o+n&&c>=o&&c<o+n;const isPl=MK.place.some(p=>p.r===r&&p.c===c);if(!inSq&&!isPl)continue;
+const d=document.createElement("div");d.className="fcell "+(inSq?"square":"terrace");d.style.cssText=`left:${c*cs}px;top:${r*cs}px;width:${cs-2}px;height:${cs-2}px`;f.appendChild(d)}
+MK.place.forEach((p,i)=>{if(i>=MK.idx)return;const d=document.createElement("div");d.className="fnum"+(MK.transferred?"":" out");const cs=n===3?44:30;
+let r=p.r,c=p.c;if(MK.transferred){const t=MK.fin[p.v];r=t[0]+o;c=t[1]+o}
+const inSq=p.r>=o&&p.r<o+n&&p.c>=o&&p.c<o+n;d.className="fnum"+(inSq||MK.transferred?"":" out");
+d.style.cssText=`left:${c*cs+2}px;top:${r*cs+2}px;width:${cs-6}px;height:${cs-6}px`;d.textContent=p.v;f.appendChild(d)});
+if(MK.idx===0)$("mkNote").textContent="「1つ進む」を押してね。まず、外側のマスにも数を置いていくよ。";
+else if(!MK.transferred)$("mkNote").textContent=`${MK.idx}まで置いた。${MK.idx>=MK.place.length?"全部置けた。次は、外側の数を反対側へ移すよ。":""}`;
+else $("mkNote").textContent="🎉 完成！ 外側の数が反対側へ移って、魔方陣になった。たて・よこ・ななめの合計を確かめてみよう。"}
+else{const cs=n===3?64:52;f.style.width=f.style.height=(n*cs)+"px";
+for(let r=0;r<n;r++)for(let c=0;c<n;c++){const d=document.createElement("div");d.className="fcell square";d.style.cssText=`left:${c*cs}px;top:${r*cs}px;width:${cs-2}px;height:${cs-2}px`;f.appendChild(d)}
+MK.place.forEach((p,i)=>{if(i>=MK.idx)return;const d=document.createElement("div");d.className="fnum";d.style.cssText=`left:${p.c*cs+2}px;top:${p.r*cs+2}px;width:${cs-6}px;height:${cs-6}px;font-size:${n===3?20:16}px`;d.textContent=p.v;f.appendChild(d)});
+const cur=MK.place[MK.idx-1];
+$("mkNote").textContent=MK.idx===0?"「1つ進む」を押してね。":MK.idx>=MK.place.length?"🎉 完成！ どの列も合計が同じ魔方陣になった。":`${cur.v}を置いた。${cur._n||""}`}}
+$("mkStep").onclick=()=>{clearInterval(MK.timer);
+if(MK.m==="terrace"){if(MK.idx<MK.place.length){MK.idx++;beep(700,0,.06)}else if(!MK.transferred){MK.transferred=true;beep(880,0,.12);setTimeout(()=>beep(1046,0,.15),300)}}
+else if(MK.idx<MK.place.length){MK.idx++;beep(700,0,.06)}
+mkDraw()};
+$("mkAuto").onclick=()=>{clearInterval(MK.timer);MK.timer=setInterval(()=>{const before=MK.idx+(MK.transferred?1000:0);$("mkStep").onclick();const after=MK.idx+(MK.transferred?1000:0);if(before===after)clearInterval(MK.timer)},650)};
+$("mkReset").onclick=mkInit;$("mkMethod").onchange=mkInit;$("mkSize").onchange=mkInit;
+/* ---------- 練習シート ---------- */
+let sheetBlob=null;
+$("sheetBtn").onclick=()=>{const cv=document.createElement("canvas");cv.width=2480;cv.height=3508;const x=cv.getContext("2d");
+x.fillStyle="#ffffff";x.fillRect(0,0,2480,3508);x.fillStyle="#14655a";x.fillRect(0,0,2480,300);
+x.fillStyle="#ffffff";x.font="bold 120px sans-serif";x.textAlign="center";x.fillText("魔方陣 練習シート",1240,165);
+x.font="52px sans-serif";x.fillText("たて・よこ・ななめの合計が、全部同じになるように数を入れよう",1240,255);
+x.fillStyle="#20302a";x.font="48px sans-serif";x.textAlign="left";x.fillText("名前：＿＿＿＿＿＿＿＿＿＿＿＿　　日付：＿＿＿＿＿＿",120,420);
+function grid(gx,gy,cs,n,target,label){x.fillStyle="#20302a";x.font="bold 58px sans-serif";x.textAlign="left";x.fillText(label,gx,gy-36);
+x.strokeStyle="#20302a";x.lineWidth=5;for(let r=0;r<n;r++)for(let c=0;c<n;c++)x.strokeRect(gx+c*cs,gy+r*cs,cs,cs);
+x.font="bold 54px sans-serif";x.fillStyle="#14655a";x.textAlign="center";x.fillText("目標 "+target,gx+n*cs/2,gy+n*cs+84)}
+grid(140,560,330,3,15,"3×3 ― 1から9までを1回ずつ（合計15）");
+grid(1330,560,330,3,15,"3×3 ― ちがう並びも探そう");
+grid(140,1880,200,5,65,"5×5 ― 1から25までを1回ずつ（合計65）");
+grid(1330,1880,200,5,65,"5×5 ― 作り方を思い出して");
+x.fillStyle="#20302a";x.font="46px sans-serif";x.textAlign="left";
+x.fillText("ヒント：どの列も合計は同じ。3×3の真ん中は5。角には偶数、辺の真ん中には奇数。",120,3240);
+x.fillText("作り方（テラス式）：外側に階段のマスを書き足し、ななめに数を置いて、はみ出した数を反対側へ移す。",120,3330);
+x.fillStyle="#8a7f5c";x.font="40px sans-serif";x.fillText("魔方陣工房 ― 数学の絵本 第35話「洛書と魔方陣」と連動",120,3440);
+cv.toBlob(async b=>{sheetBlob=b;$("sheetImg").src=URL.createObjectURL(b);$("sheetOverlay").style.display="block"},"image/png")};
+$("sheetShare").onclick=async()=>{if(!sheetBlob)return;const f=new File([sheetBlob],"mahoujin-sheet.png",{type:"image/png"});
+if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:"魔方陣 練習シート"})}catch(e){}}
+else{const a=document.createElement("a");a.href=URL.createObjectURL(sheetBlob);a.download="mahoujin-sheet.png";a.click()}};
+$("sheetClose").onclick=()=>$("sheetOverlay").style.display="none";
+/* 初期化 */
+pzNew();
+window.__mah={get PZ(){return PZ},get MK(){return MK},pzNew,pzCell,pzSolve,terraceSteps,siameseSteps,VAR,TGT};
+</script>
+</body>
+</html>
