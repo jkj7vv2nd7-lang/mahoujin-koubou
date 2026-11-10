@@ -14,7 +14,7 @@
 <style>
 :root{--ink:#20302a;--paper:#f7f3e8;--teal:#14655a;--teal2:#0e4a41;--gold:#c9a227;--gold2:#e8cf7a;--red:#b3402e;--card:#fffdf6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--paper);color:var(--ink);padding-bottom:40px}
+body{margin:0;font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--paper);color:var(--ink);padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 header{background:linear-gradient(160deg,#123f37,#14655a 60%,#1a7a68);color:#fff;padding:20px 16px 16px;text-align:center;border-bottom:4px solid var(--gold);position:relative;overflow:hidden}
 header h1{margin:0;font-size:30px;letter-spacing:.14em;text-shadow:0 2px 0 rgba(0,0,0,.25)}
 header p{margin:6px 0 0;font-size:13px;opacity:.92}
@@ -41,6 +41,10 @@ label{font-size:13px;font-weight:700;color:var(--teal2);display:block;margin-bot
 .cell.given{background:#efe8cf;border-color:var(--gold);cursor:default}
 .cell.sel{outline:3.5px solid var(--gold);outline-offset:1px}
 .cell.winflash{animation:fl .7s ease 2}
+.cell.good{animation:gd .6s ease}
+@keyframes gd{0%{box-shadow:0 0 0 0 rgba(201,162,39,.0)}40%{background:#ffe9a8;box-shadow:0 0 0 5px rgba(201,162,39,.55)}100%{}}
+.cell.bad{animation:shk .35s ease}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @keyframes fl{50%{background:#ffe9a8;transform:scale(1.07)}}
 .sum{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#7a715a;background:#efe9d6;border-radius:8px;min-width:34px}
 .sum.ok{background:#bfe3c0;color:#14532d;box-shadow:0 0 0 2px #57a773 inset}
@@ -100,7 +104,7 @@ a{color:var(--teal);font-weight:700}
 <button class="sub" id="pzReset">↩ リセット</button>
 <button class="act" id="pzNew">🎲 新しいお題</button>
 </div>
-<p class="small" style="margin-top:10px">数字タイルをタップしてから、マスをタップすると置けます。置いた数字をタップすると戻せます。各列の合計が目標にそろうと、緑色に光ります。<span id="pzStat"></span></p>
+<p class="small" style="margin-top:10px">数字タイル→マスの順でも、マス→数字タイルの順でも置けます（選んだものは光ります）。完成できる正しい数字だけが置けて、正しいと✨が付きます。置いた数字をタップすると戻せます。各列の合計が目標にそろうと、緑色に光ります。<span id="pzStat"></span></p>
 </div>
 <div class="card">
 <b>🖨 練習シート</b>
@@ -188,13 +192,13 @@ function variants(base){const out=[];const rot=g=>g[0].map((_,i)=>g.map(r=>r[i])
 const VAR={3:variants(BASE3).concat(variants(TER3)),5:variants(TER5).concat(variants(SIA5))};
 const flat=g=>g.flat();
 /* ---------- パズル ---------- */
-let PZ={n:3,board:[],given:[],sel:null,moves:0,t0:null,timer:null,sec:0,won:false};
+let PZ={n:3,board:[],given:[],sel:null,selCell:null,flash:-1,flashCls:"",moves:0,t0:null,timer:null,sec:0,won:false};
 function pzTarget(){return TGT(PZ.n)}
 function pzLines(){const n=PZ.n,b=PZ.board,L=[];
 for(let r=0;r<n;r++)L.push([...Array(n)].map((_,c)=>b[r*n+c]));
 for(let c=0;c<n;c++)L.push([...Array(n)].map((_,r)=>b[r*n+c]));
 L.push([...Array(n)].map((_,i)=>b[i*n+i]));L.push([...Array(n)].map((_,i)=>b[i*n+(n-1-i)]));return L}
-function pzNew(){const n=+$("pzSize").value;PZ={n,board:Array(n*n).fill(0),given:Array(n*n).fill(false),sel:null,moves:0,t0:null,timer:null,sec:0,won:false};
+function pzNew(){const n=+$("pzSize").value;PZ={n,board:Array(n*n).fill(0),given:Array(n*n).fill(false),sel:null,selCell:null,flash:-1,flashCls:"",moves:0,t0:null,timer:null,sec:0,won:false};
 if($("pzMode").value==="challenge"){const v=flat(VAR[n][Math.floor(Math.random()*VAR[n].length)]);const cells=[...Array(n*n).keys()];for(let i=cells.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]]}
 const k=n===3?4:9;cells.slice(0,k).forEach(ci=>{PZ.board[ci]=v[ci];PZ.given[ci]=true})}
 pzDraw();pzMsg(n===3?"たて・よこ・ななめ、全部15にしよう。":"たて・よこ・ななめ、全部65にしよう。")}
@@ -203,23 +207,28 @@ function pzUsed(){return new Set(PZ.board.filter(v=>v))}
 function pzDraw(){const n=PZ.n,bd=$("pzBoard");const cs=n===3?64:52;bd.style.gridTemplateColumns=`repeat(${n},${cs}px) 40px`;bd.innerHTML="";
 const lines=pzLines(),T=pzTarget();
 const sumState=vals=>{const s=vals.reduce((a,x)=>a+x,0),full=vals.every(v=>v);return{s,cls:full&&s===T?"ok":s>T?"over":""}};
-for(let r=0;r<n;r++){for(let c=0;c<n;c++){const i=r*n+c,d=document.createElement("div");d.className="cell"+(PZ.given[i]?" given":"");d.style.width=d.style.height=cs+"px";d.style.fontSize=(n===3?26:21)+"px";d.textContent=PZ.board[i]||"";d.onclick=()=>pzCell(i);bd.appendChild(d)}
+for(let r=0;r<n;r++){for(let c=0;c<n;c++){const i=r*n+c,d=document.createElement("div");d.className="cell"+(PZ.given[i]?" given":"")+(PZ.selCell===i?" sel":"")+(PZ.flash===i?" "+PZ.flashCls:"");d.style.width=d.style.height=cs+"px";d.style.fontSize=(n===3?26:21)+"px";d.textContent=PZ.board[i]||"";d.onclick=()=>pzCell(i);bd.appendChild(d)}
 const st=sumState(lines[r]);const sd=document.createElement("div");sd.className="sum "+st.cls;sd.textContent=st.s||"";bd.appendChild(sd)}
 for(let c=0;c<n;c++){const st=sumState(lines[n+c]);const sd=document.createElement("div");sd.className="sum "+st.cls;sd.textContent=st.s||"";bd.appendChild(sd)}
 const d1=sumState(lines[2*n]),d2=sumState(lines[2*n+1]);const dd=document.createElement("div");dd.className="sum diag "+(d1.cls==="ok"&&d2.cls==="ok"?"ok":"");dd.innerHTML=`＼${d1.s||0}<br>／${d2.s||0}`;bd.appendChild(dd);
 const tray=$("pzTray");tray.innerHTML="";const used=pzUsed();
-for(let v=1;v<=n*n;v++){const t=document.createElement("div");t.className="tile"+(used.has(v)?" used":"")+(PZ.sel===v?" sel":"");t.textContent=v;t.onclick=()=>{if(PZ.won)return;PZ.sel=PZ.sel===v?null:v;beep(520,0,.06);pzDraw()};tray.appendChild(t)}
+for(let v=1;v<=n*n;v++){const t=document.createElement("div");t.className="tile"+(used.has(v)?" used":"")+(PZ.sel===v?" sel":"");t.textContent=v;t.onclick=()=>{if(PZ.won)return;if(PZ.selCell!=null&&!PZ.board[PZ.selCell]){pzTryPlace(PZ.selCell,v);return}PZ.sel=PZ.sel===v?null:v;beep(520,0,.06);pzDraw()};tray.appendChild(t)}
 $("pzStat").textContent=PZ.moves?`（${PZ.moves}手・${PZ.sec}秒）`:""}
 function pzStartTimer(){if(PZ.timer)return;PZ.t0=Date.now();PZ.timer=setInterval(()=>{PZ.sec=Math.floor((Date.now()-PZ.t0)/1000);$("pzStat").textContent=`（${PZ.moves}手・${PZ.sec}秒）`},500)}
-function pzCell(i){if(PZ.won||PZ.given[i])return;
-if(PZ.board[i]){PZ.board[i]=0;PZ.sel=null;beep(330,0,.08);pzDraw();return}
-if(PZ.sel==null){pzMsg("まず下の数字タイルを選んでね。");return}
-PZ.board[i]=PZ.sel;PZ.sel=null;PZ.moves++;pzStartTimer();beep(740,0,.09);
+function pzTryPlace(i,v){const trial=[...PZ.board];trial[i]=v;
+if(!pzSolve(trial)){PZ.flash=i;PZ.flashCls="bad";PZ.selCell=null;pzDraw();beep(180,0,.18,"square",.08);
+setTimeout(()=>{PZ.flash=-1;pzDraw()},380);pzMsg("その数字は、そこには入らないみたい。別の場所を考えてみよう。");return}
+PZ.board[i]=v;PZ.sel=null;PZ.selCell=null;PZ.moves++;pzStartTimer();beep(880,0,.1);setTimeout(()=>beep(1318,0,.12),70);
+PZ.flash=i;PZ.flashCls="good";pzDraw();setTimeout(()=>{PZ.flash=-1;pzDraw()},650);
 const T=pzTarget(),done=pzLines().every(L=>L.reduce((a,x)=>a+x,0)===T&&L.every(v=>v));
-pzDraw();
 if(done){PZ.won=true;clearInterval(PZ.timer);pzMsg(`🎉 完成！ ${PZ.moves}手・${PZ.sec}秒で魔方陣ができた！`,true);[523,659,784,1046].forEach((f,k)=>beep(f,k*.13,.22,"triangle",.14));
 [...$("pzBoard").querySelectorAll(".cell")].forEach(c=>c.classList.add("winflash"))}
-else pzMsg("いい調子。そのまま続けよう。")}
+else pzMsg("✨ 正しい数字だ。そのまま続けよう。")}
+function pzCell(i){if(PZ.won||PZ.given[i])return;
+if(PZ.board[i]){PZ.board[i]=0;PZ.sel=null;PZ.selCell=null;beep(330,0,.08);pzDraw();return}
+if(PZ.sel!=null){pzTryPlace(i,PZ.sel);return}
+PZ.selCell=PZ.selCell===i?null:i;beep(520,0,.06);pzDraw();
+pzMsg(PZ.selCell!=null?"マスを選んだ。次に数字タイルをタップしてね。":"まず数字タイルか、マスを選んでね。")}
 function pzSolve(board){const n=PZ.n,T=pzTarget();
 const vs=VAR[n].map(flat).filter(v=>board.every((x,i)=>!x||v[i]===x));if(vs.length)return vs[0];
 const b=[...board],cells=[];for(let i=0;i<n*n;i++)if(!b[i])cells.push(i);
@@ -235,7 +244,7 @@ const i=PZ.board.findIndex((v,k)=>!v&&sol[k]);if(i<0)return;
 PZ.board[i]=sol[i];PZ.moves++;pzStartTimer();beep(880,0,.1);pzDraw();
 const T=pzTarget();if(pzLines().every(L=>L.reduce((a,x)=>a+x,0)===T&&L.every(v=>v))){PZ.won=true;clearInterval(PZ.timer);pzMsg(`🎉 完成！ 魔方陣ができた！`,true);[523,659,784,1046].forEach((f,k)=>beep(f,k*.13,.22,"triangle",.14))}
 else pzMsg("ヒント：1つ置いたよ。")};
-$("pzReset").onclick=()=>{const mode=$("pzMode").value;if(mode==="challenge"){pzNew()}else{PZ.board=PZ.board.map((v,i)=>PZ.given[i]?v:0);PZ.sel=null;PZ.won=false;pzDraw();pzMsg("リセットしたよ。")}};
+$("pzReset").onclick=()=>{const mode=$("pzMode").value;if(mode==="challenge"){pzNew()}else{PZ.board=PZ.board.map((v,i)=>PZ.given[i]?v:0);PZ.sel=null;PZ.selCell=null;PZ.won=false;pzDraw();pzMsg("リセットしたよ。")}};
 $("pzNew").onclick=pzNew;$("pzSize").onchange=pzNew;$("pzMode").onchange=pzNew;
 /* ---------- 作り方 ---------- */
 let MK={steps:[],idx:0,timer:null};
@@ -253,7 +262,7 @@ place[place.length-1]._n=note;r=nr;c=nc}
 return place}
 const MKDESC={terrace:"四辺の外側に階段（テラス）のようなマスを書き足し、1からななめの列に沿って数を置いていきます。外側に出た数は、同じ行・同じ列の反対側にある空きマスへ、そのまままっすぐ移します。日本では「バシェーの方法」という名前で伝えられることが多い作り方です。",
 siamese:"1を上段の真ん中に置き、次からは右上へ進みます。はみ出したら反対側から出てきて、行き先が埋まっていたら真下へ下がります。ド・ラ・ルベールがシャム（今のタイ）からヨーロッパへ伝えた「シャム法」です。"};
-function mkInit(){clearInterval(MK.timer);const n=+$("mkSize").value,m=$("mkMethod").value;MK={steps:[],idx:0,timer:null,n,m};
+function mkInit(){clearInterval(MK.timer);const ab=$("mkAuto");if(ab)ab.textContent="⏩ 自動で見る";const n=+$("mkSize").value,m=$("mkMethod").value;MK={steps:[],idx:0,timer:null,n,m};
 $("mkDesc").textContent=MKDESC[m];
 if(m==="terrace"){const{place,fin,S,o}=terraceSteps(n);MK.field={S,o};MK.place=place;MK.fin=fin;MK.total=place.length+1}
 else{MK.place=siameseSteps(n);MK.total=MK.place.length}
@@ -274,11 +283,14 @@ for(let r=0;r<n;r++)for(let c=0;c<n;c++){const d=document.createElement("div");d
 MK.place.forEach((p,i)=>{if(i>=MK.idx)return;const d=document.createElement("div");d.className="fnum";d.style.cssText=`left:${p.c*cs+2}px;top:${p.r*cs+2}px;width:${cs-6}px;height:${cs-6}px;font-size:${n===3?20:16}px`;d.textContent=p.v;f.appendChild(d)});
 const cur=MK.place[MK.idx-1];
 $("mkNote").textContent=MK.idx===0?"「1つ進む」を押してね。":MK.idx>=MK.place.length?"🎉 完成！ どの列も合計が同じ魔方陣になった。":`${cur.v}を置いた。${cur._n||""}`}}
-$("mkStep").onclick=()=>{clearInterval(MK.timer);
-if(MK.m==="terrace"){if(MK.idx<MK.place.length){MK.idx++;beep(700,0,.06)}else if(!MK.transferred){MK.transferred=true;beep(880,0,.12);setTimeout(()=>beep(1046,0,.15),300)}}
-else if(MK.idx<MK.place.length){MK.idx++;beep(700,0,.06)}
-mkDraw()};
-$("mkAuto").onclick=()=>{clearInterval(MK.timer);MK.timer=setInterval(()=>{const before=MK.idx+(MK.transferred?1000:0);$("mkStep").onclick();const after=MK.idx+(MK.transferred?1000:0);if(before===after)clearInterval(MK.timer)},650)};
+function mkAdvance(){let moved=false;
+if(MK.m==="terrace"){if(MK.idx<MK.place.length){MK.idx++;moved=true;beep(700,0,.06)}else if(!MK.transferred){MK.transferred=true;moved=true;beep(880,0,.12);setTimeout(()=>beep(1046,0,.15),300)}}
+else if(MK.idx<MK.place.length){MK.idx++;moved=true;beep(700,0,.06)}
+mkDraw();return moved}
+function mkStopAuto(){clearInterval(MK.timer);MK.timer=null;$("mkAuto").textContent="⏩ 自動で見る"}
+$("mkStep").onclick=()=>{mkStopAuto();mkAdvance()};
+$("mkAuto").onclick=()=>{if(MK.timer){mkStopAuto();return}$("mkAuto").textContent="⏸ 止める";
+MK.timer=setInterval(()=>{if(!mkAdvance())mkStopAuto()},650)};
 $("mkReset").onclick=mkInit;$("mkMethod").onchange=mkInit;$("mkSize").onchange=mkInit;
 /* ---------- 練習シート ---------- */
 let sheetBlob=null;
